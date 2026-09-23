@@ -6,10 +6,12 @@ All notable changes to ESP-VISION are recorded here. The format follows [Keep a 
 
 ### Added
 
+- Added runtime IPA and manual ISP control to the `sensor` module through `set_ipa()`, `get_ipa()`, `set_isp()`, and `get_isp()`, covering the exposure, pixel gain, demosaic, white balance, LSC, BLC, BF, sharpen, CCM, and gamma blocks over the ESP Video V4L2 controls. The feature is opt-in per board through `ESP_VISION_ENABLE_CAMERA_IPA_CONTROL` and is enabled on `ESP32_P4X_FUNCTION_EV_BOARD` and `ESP32_P4X_EYE`, with documentation in the `sensor` API reference and an example under `example/01-Camera/04-IPA`.
 - Added a hardware-in-the-loop CI stage that flashes the `ESP32_P4X_FUNCTION_EV_BOARD` build onto a real board and tests its camera and LCD, through `tools/ci/flash_and_test.py` and `tools/ci/device_checks.py`.
 
 ### Fixed
 
+- Fixed the hardware-in-the-loop device checks intermittently failing with `ValueError: not enough values to unpack` by parsing a device answer only once its whole line has arrived.
 - Fixed the Python CI jobs failing with `wget: command not found` by moving them from `python:3.11-slim` to `python:3.11`.
 - Reduced `ESP32_S31_KORVO` and `ESP32_S31_CHATBOT` to two camera capture buffers, freeing 1.76 MiB of PSRAM so a model still fits alongside the 1280x720 SC101IOT capture path and the LCD framebuffers.
 - Enabled ESP Video CSI format conversion for supported ESP32-P4 revisions when the IDF CSI header exposes the backported API, fixing camera startup on release/v5.5 snapshots whose version macro still selects the legacy RAW-to-RGB CSI path.

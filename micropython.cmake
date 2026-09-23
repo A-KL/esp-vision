@@ -14,6 +14,7 @@ set(MICROPY_MANIFEST_ESP_VISION_ROOT "${ESP_VISION_ROOT}")
 
 
 set(ESP_VISION_ENABLE_BARCODE OFF)
+set(ESP_VISION_ENABLE_CAMERA_IPA_CONTROL OFF)
 if(EXISTS "${ESP_VISION_BOARD_DIR}/board.cmake")
     include("${ESP_VISION_BOARD_DIR}/board.cmake")
 endif()
@@ -235,6 +236,31 @@ if(ESP_VISION_ENABLE_BARCODE
     )
 
     list(APPEND IDF_COMPONENTS zxing)
+endif()
+
+# Runtime IPA and manual ISP control is opt-in per board (board sets
+# ESP_VISION_ENABLE_CAMERA_IPA_CONTROL in its boards/<board>/board.cmake) and
+# only works where the camera feeds the ESP32-P4 ISP over MIPI-CSI. The ISP
+# pipeline controller lives in esp_video's private_include, so this depends on
+# upstream internals and needs revisiting whenever esp_video is upgraded.
+if(ESP_VISION_ENABLE_CAMERA_IPA_CONTROL)
+    target_compile_definitions(usermod_esp_vision_platform INTERFACE ESP_VISION_ENABLE_CAMERA_IPA_CONTROL=1)
+    list(APPEND MICROPY_CPP_DEF_EXTRA ESP_VISION_ENABLE_CAMERA_IPA_CONTROL=1)
+    idf_component_get_property(ESP_VISION_VIDEO_DIR espressif__esp_video COMPONENT_DIR)
+    target_include_directories(usermod_esp_vision_platform INTERFACE
+        ${ESP_VISION_VIDEO_DIR}/private_include
+    )
+    target_sources(usermod_esp_vision_platform INTERFACE
+        ${ESP_VISION_ROOT}/modules/py_sensor_isp.c
+        ${ESP_VISION_ROOT}/platform/camera_isp.c
+        ${ESP_VISION_ROOT}/platform/video_isp.c
+    )
+    list(APPEND IDF_COMPONENTS espressif__esp_video)
+    if(CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER)
+        idf_component_get_property(ESP_VISION_IPA_DIR espressif__esp_ipa COMPONENT_DIR)
+        target_include_directories(usermod_esp_vision_platform INTERFACE ${ESP_VISION_IPA_DIR}/include)
+        list(APPEND IDF_COMPONENTS espressif__esp_ipa)
+    endif()
 endif()
 
 target_compile_options(usermod_esp_vision_platform INTERFACE

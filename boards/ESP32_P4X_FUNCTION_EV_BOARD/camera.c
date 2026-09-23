@@ -5,6 +5,9 @@
  */
 
 #include "camera.h"
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+#include "camera_isp.h"
+#endif
 
 #include <fcntl.h>
 #include <inttypes.h>
@@ -64,6 +67,12 @@ typedef struct {
     ppa_client_handle_t ppa_handle;
     uint8_t *ppa_out_buf;
     const char *device_path;
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+    const char *isp_device_path;
+#endif
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL && CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+    const void *ipa_config;
+#endif
     esp_vision_camera_buffer_t buffers[ESP_VISION_CAMERA_BUFFER_COUNT];
 } esp_vision_camera_context_t;
 
@@ -185,15 +194,37 @@ static esp_err_t esp_vision_camera_video_init(void)
 
     s_camera.device_path = camera->dev_path;
     s_camera.video_initialized = true;
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+    s_camera.isp_device_path = camera->meta_path;
+#endif
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL && CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+    s_camera.ipa_config = NULL;
+    ret = esp_vision_video_isp_lookup_ipa(camera->dev_path, camera->meta_path, &s_camera.ipa_config);
+    ESP_RETURN_ON_ERROR(ret, TAG, "failed to get camera IPA configuration");
+#endif
     return ESP_OK;
 }
 
 static void esp_vision_camera_video_deinit(void)
 {
     if (s_camera.video_initialized) {
-        (void)esp_board_manager_deinit_device_by_name(ESP_BOARD_DEVICE_NAME_CAMERA);
+        esp_err_t ret = esp_board_manager_deinit_device_by_name(ESP_BOARD_DEVICE_NAME_CAMERA);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "failed to deinitialize camera: %s", esp_err_to_name(ret));
+        }
+        // A failed deinit may leave the ISP pointing at the LSC tables, so only
+        // free them once the device is known to be gone.
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+        esp_vision_video_isp_release(ret == ESP_OK);
+#endif
         s_camera.device_path = NULL;
         s_camera.video_initialized = false;
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+        s_camera.isp_device_path = NULL;
+#endif
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL && CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+        s_camera.ipa_config = NULL;
+#endif
     }
 }
 
@@ -584,6 +615,58 @@ bool esp_vision_camera_get_vflip(void)
 {
     return s_camera.vflip;
 }
+
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL && CONFIG_ESP_VIDEO_ENABLE_ISP_PIPELINE_CONTROLLER
+esp_err_t esp_vision_camera_get_ipa(bool *enabled)
+{
+    return esp_vision_video_isp_get_controller(esp_vision_camera_is_ready(), s_camera.ipa_config, enabled);
+}
+
+esp_err_t esp_vision_camera_set_ipa(bool enable)
+{
+    bool enabled;
+    esp_err_t ret = esp_vision_camera_get_ipa(&enabled);
+    if ((ret != ESP_OK) || (enabled == enable)) {
+        return ret;
+    }
+
+    const esp_vision_camera_restart_ops_t ops = {
+        .release_buffers = esp_vision_camera_release_buffers,
+        .open_device = esp_vision_camera_open_device,
+        .set_input_format = esp_vision_camera_set_input_format,
+        .update_active_window = esp_vision_camera_update_active_window,
+        .init_buffers = esp_vision_camera_init_buffers,
+        .start_stream = esp_vision_camera_start_stream,
+        .cleanup = esp_vision_camera_cleanup,
+    };
+    return esp_vision_video_isp_set_controller(enable, &s_camera.fd, &s_camera.streaming, &s_camera.initialized,
+                                               s_camera.isp_device_path, s_camera.device_path, s_camera.ipa_config, &ops);
+}
+#endif
+
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+esp_err_t esp_vision_camera_get_isp(esp_vision_isp_block_t block, esp_vision_isp_config_t *config)
+{
+    if (!esp_vision_camera_is_ready()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (config == NULL) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    return esp_vision_video_isp_get(s_camera.fd, s_camera.isp_device_path, block, config);
+}
+
+esp_err_t esp_vision_camera_set_isp(esp_vision_isp_block_t block, const esp_vision_isp_config_t *config)
+{
+    if (!esp_vision_camera_is_ready()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if (esp_vision_video_isp_controller_active()) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    return esp_vision_video_isp_set(s_camera.fd, s_camera.isp_device_path, block, config);
+}
+#endif
 
 uint32_t esp_vision_camera_get_sensor_id(void)
 {

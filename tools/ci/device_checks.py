@@ -213,7 +213,10 @@ class Link:
         deadline = time.monotonic() + timeout
         while True:
             self.pump()
-            for line in self.stdout.decode("utf-8", "replace").splitlines():
+            # stdout arrives in frames that can split a print() mid-line, so
+            # the last segment is only parsed once its newline has arrived.
+            for line in self.stdout.decode("utf-8", "replace").split("\n")[:-1]:
+                line = line.rstrip("\r")
                 if line.startswith(MARKER_OK):
                     return line[len(MARKER_OK):].strip()
                 if line.startswith(MARKER_ERR):
