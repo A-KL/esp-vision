@@ -24,6 +24,10 @@
 #include "camera.h"
 #include "ev_stdio.h"
 #include "py_image.h"
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+#include "camera_isp.h"
+#include "py_sensor_isp.h"
+#endif
 
 #ifdef NO_QSTR
 #define SENSOR_PIXFORMAT_GRAYSCALE (0)
@@ -213,6 +217,32 @@ static mp_obj_t sensor_get_vflip(void)
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_vflip_obj, sensor_get_vflip);
 
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+static mp_obj_t sensor_set_ipa(mp_obj_t enable_in)
+{
+    esp_err_t ret = esp_vision_camera_set_ipa(mp_obj_is_true(enable_in));
+    if (ret != ESP_OK) {
+        sensor_raise_esp_err(ret);
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_1(sensor_set_ipa_obj, sensor_set_ipa);
+
+static mp_obj_t sensor_get_ipa(void)
+{
+    bool enabled = false;
+    esp_err_t ret = esp_vision_camera_get_ipa(&enabled);
+    if (ret == ESP_ERR_NOT_SUPPORTED) {
+        return mp_const_none;
+    }
+    if (ret != ESP_OK) {
+        sensor_raise_esp_err(ret);
+    }
+    return mp_obj_new_bool(enabled);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(sensor_get_ipa_obj, sensor_get_ipa);
+#endif
+
 static mp_obj_t sensor_skip_frames(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args)
 {
     enum { ARG_time, ARG_n };
@@ -336,6 +366,12 @@ static const mp_rom_map_elem_t sensor_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_get_hmirror), MP_ROM_PTR(&sensor_get_hmirror_obj) },
     { MP_ROM_QSTR(MP_QSTR_set_vflip), MP_ROM_PTR(&sensor_set_vflip_obj) },
     { MP_ROM_QSTR(MP_QSTR_get_vflip), MP_ROM_PTR(&sensor_get_vflip_obj) },
+#if ESP_VISION_ENABLE_CAMERA_IPA_CONTROL
+    { MP_ROM_QSTR(MP_QSTR_set_ipa), MP_ROM_PTR(&sensor_set_ipa_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_ipa), MP_ROM_PTR(&sensor_get_ipa_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_isp), MP_ROM_PTR(&sensor_set_isp_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_isp), MP_ROM_PTR(&sensor_get_isp_obj) },
+#endif
     { MP_ROM_QSTR(MP_QSTR_skip_frames), MP_ROM_PTR(&sensor_skip_frames_obj) },
     { MP_ROM_QSTR(MP_QSTR_snapshot), MP_ROM_PTR(&sensor_snapshot_obj) },
     { MP_ROM_QSTR(MP_QSTR_evmux), MP_ROM_PTR(&sensor_evmux_obj) },

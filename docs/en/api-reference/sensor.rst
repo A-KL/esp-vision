@@ -59,6 +59,88 @@ The camera stream can be stopped when capture is not required and restarted befo
 
 After restarting the stream, discard a few frames if exposure or the incoming frame queue needs to stabilize.
 
+IPA Runtime Control
+-------------------
+
+IPA and ISP control methods are optional firmware features. Check ``hasattr(sensor, "get_ipa")`` or ``hasattr(sensor, "get_isp")`` before using them; these methods are absent when the feature is not built in.
+
+Use ``sensor.set_ipa(False)`` to stop the image processing algorithm (IPA) controller and ``sensor.set_ipa(True)`` to start it again. Initialize the camera before using these methods. ``sensor.get_ipa()`` returns the controller's current state, or ``None`` when runtime control is unsupported. Setting IPA on an unsupported camera raises ``OSError``.
+
+.. code-block:: python
+
+   sensor.reset()
+   sensor.skip_frames(time=2000)
+   if hasattr(sensor, "get_ipa") and sensor.get_ipa() is not None:
+       sensor.set_ipa(False)
+       print("IPA:", sensor.get_ipa())
+       img = sensor.snapshot()
+       img.flush()
+       sensor.set_ipa(True)
+
+Changing IPA state briefly stops and restarts capture while preserving the output format, frame size, mirror, and flip settings. Setting the current state again has no effect. ``sensor.reset()`` and restarting after ``sensor.shutdown(True)`` restore the default IPA state.
+
+A failed switch leaves the camera shut down rather than in its previous state: the capture buffers, the scaler, and the camera device itself are all released before ``OSError`` is raised. Call ``sensor.reset()`` to bring the camera back.
+
+Disabling IPA stops its automatic parameter updates; it does not bypass the ISP or clear existing tuning. The image may initially look unchanged. To compare the effect, change the illumination or light source color while previewing, then enable IPA and allow its algorithms to settle again. The algorithms controlled by this switch depend on the active IPA configuration.
+
+Manual ISP Control
+------------------
+
+After initialization, ``sensor.get_isp(block)`` returns a dictionary of the current driver parameters, or ``None`` when the block is unsupported. A block is unsupported when the camera driver has no getter for it or when the firmware was built for a chip revision that lacks the hardware: ``lsc`` needs ESP32-P4 v1.0 or newer and ``blc`` needs v3.0 or newer, while ``exposure`` is write-only on sensors such as SC2336, so ``sensor.get_isp("exposure")`` normally returns ``None``. Call ``sensor.set_ipa(False)`` before writing manual settings. ``sensor.set_isp(block, **params)`` updates one block, keeping unspecified fields from its current configuration. Writes while IPA is running raise ``OSError`` to prevent the algorithms from overwriting manual settings.
+
+.. code-block:: python
+
+   sensor.reset()
+   sensor.skip_frames(time=2000)
+   sensor.set_ipa(False)
+
+   print(sensor.get_isp("wb"))
+   sensor.set_isp("wb", enable=False)
+   sensor.set_isp("ccm", enable=False)
+   sensor.set_isp("gamma", enable=False)
+   sensor.snapshot().flush()
+
+   sensor.set_isp("wb", enable=True, rg=1.8, bg=1.4)
+   sensor.set_isp("exposure", value=10000)  # Microseconds, rounded to 100 us.
+   sensor.set_isp("pixel_gain", value=2.0)  # Gain multiplier.
+
+   sensor.set_ipa(True)
+
+The supported block names and fields follow the tuning parameter vocabulary:
+
+.. list-table:: ISP parameters
+   :header-rows: 1
+   :widths: 18 82
+
+   * - Block
+     - Fields
+   * - ``exposure``
+     - ``value``: exposure in microseconds, positive. The device control counts 100-microsecond units, so a write is rounded to the nearest 100 microseconds and must then fit the range and step the sensor reports, which is where the usable limits come from. SC2336 at 1280x720 30fps, for example, accepts roughly 200 microseconds through 33.2 milliseconds in 100-microsecond steps.
+   * - ``pixel_gain``
+     - ``value``: positive gain multiplier, selected from the nearest supported gain menu entry within the sensor's range.
+   * - ``demosaic``
+     - ``enable``, ``gradient_ratio``: nonnegative gradient ratio within the driver's fixed-point range.
+   * - ``wb``
+     - ``enable``, ``rg``, ``bg``: red and blue gain multipliers, 0 through 1023/256.
+   * - ``lsc``
+     - ``enable``, ``lsc_gain_size``, ``gain_r``, ``gain_gr``, ``gain_gb``, ``gain_b``: four gain lists, each with the length returned by ``get_isp("lsc")``; values are 0 through 1023/256. The size is determined by capture dimensions.
+   * - ``blc``
+     - ``enable``, ``stretch_enable``, ``top_left_offset``, ``top_right_offset``, ``bottom_left_offset``, ``bottom_right_offset``: black level offsets, integers from 0 through 255.
+   * - ``bf``
+     - ``enable``, ``level`` (2–20), ``matrix``: nine integers from 0 through 15 in row order.
+   * - ``sharpen``
+     - ``enable``, ``h_thresh``, ``l_thresh`` (0–255, low ≤ high), ``h_coeff``, ``m_coeff`` (0 through 255/32), ``matrix``: nine integers from 0 through 31 in row order.
+   * - ``ccm``
+     - ``enable``, ``matrix``: nine finite numbers strictly between -4 and 4 in row order.
+   * - ``gamma``
+     - ``enable``, ``x``, ``y``: two lists of 16 integers from 0 through 255. X must increase from an implicit zero by powers of two; the last point must be 255 and is treated as 256 for the final interval.
+
+Set ``enable=True`` when applying new parameters to a disabled block. Passing only ``enable=False`` disables processing without replacing its stored tables. White balance gains are kept across that disable and come back when the block is enabled again. Gamma readback reports the red channel; setting ``x`` or ``y`` applies the resulting curve to all three channels, while an enable-only update preserves the separate channel curves. LSC tables are copied into camera-owned storage and remain valid across garbage collection and IPA switches; the camera keeps the previously installed table intact until the driver accepts the new one, so a rejected write leaves the image unchanged. Fixed-point values and sensor settings may be quantized by the driver.
+
+Unknown blocks, invalid values, and array length mismatches are rejected before applying the update. An unsupported write raises ``OSError``. A device error may leave a partially applied configuration; use ``sensor.reset()`` to reinitialize after such a failure.
+
+The ``example/01-Camera/04-IPA/isp_preview.py`` example configures the output format, disables IPA, then continuously previews while randomizing exposure, gain, white balance gains, and CCM every 2 seconds until Ctrl-C. Each update prints the requested exposure and the driver readback for gain, white balance gains, and CCM. Adjust ``UPDATE_INTERVAL_MS`` and the parameter range constants to change the experiment; a value the active sensor rejects is printed and skipped rather than stopping the preview. Ctrl-C leaves IPA disabled and preserves the last settings.
+
 .. seealso::
 
    :doc:`../concepts/camera-pipeline` explains how a frame travels from the image sensor to an :py:class:`image.Image`, and :doc:`../concepts/image-model` covers pixel formats and color spaces.
