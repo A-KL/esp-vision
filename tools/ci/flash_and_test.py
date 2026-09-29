@@ -247,9 +247,13 @@ def main() -> int:
     parser.add_argument("--log", help="path for the full text log; defaults to logs/<BOARD>-target-test.log")
     parser.add_argument("--checks", default="all", help="checks forwarded to device_checks.py")
     parser.add_argument("--frames", type=int, default=30, help="frames used by the timing checks")
+    parser.add_argument("--display-hold", type=int, default=0,
+                        help="seconds to hold each LCD backlight state for visual inspection (default: 0)")
     parser.add_argument("--settle", type=float, default=3.0, help="seconds to wait for USB re-enumeration")
     parser.add_argument("--boot-timeout", type=float, default=90.0, help="seconds to wait for EV-MUX after reset")
     args = parser.parse_args()
+    if args.display_hold < 0:
+        parser.error("--display-hold must be non-negative")
 
     log_path = Path(args.log) if args.log else REPO_ROOT / "logs" / f"{args.board}-target-test.log"
     tee = Tee(log_path)
@@ -298,7 +302,8 @@ def main() -> int:
             [sys.executable, str(TRANSPORT_TEST), "--port", port, "--baudrate", str(args.baudrate)],
         )
         checks = [sys.executable, str(DEVICE_CHECKS), "--port", port, "--baudrate", str(args.baudrate),
-                  "--checks", args.checks, "--frames", str(args.frames)]
+                  "--checks", args.checks, "--frames", str(args.frames),
+                  "--display-hold", str(args.display_hold)]
         if args.output:
             checks += ["--output", args.output]
         checks_ok = stage("device checks (tools/ci/device_checks.py)", checks)

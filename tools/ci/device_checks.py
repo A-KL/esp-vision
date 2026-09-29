@@ -15,6 +15,7 @@ reports SKIP rather than failing the job. The exit status is non-zero when any
 check fails.
 
     tools/ci/device_checks.py --port /dev/ttyACM0 --output frame.jpg
+    tools/ci/device_checks.py --port /dev/ttyACM0 --checks display --display-hold 5
 """
 
 from __future__ import annotations
@@ -504,9 +505,12 @@ def check_image_ops(ctx: Context) -> str:
 
 def check_display(ctx: Context) -> str:
     """Panel bring-up: a color-bar pattern plus backlight control."""
+    hold = ctx.args.display_hold
+    if hold:
+        print(f"          observe color bars at 100%, 40%, then 100% backlight ({hold}s each)", flush=True)
     answer = ctx.link.run_on_device(
         ctx.script(f"""
-        import display, image
+        import display, image, time
         lcd = display.Display(backlight=100)
         try:
             frame = image.Image(lcd.width(), lcd.height(), image.RGB565)
@@ -516,14 +520,17 @@ def check_display(ctx: Context) -> str:
                 frame.draw_rectangle(index * bar, 0, bar, frame.height(), color=color, fill=True)
             frame.draw_string(8, 8, 'ESP-VISION CI', color=(0, 0, 0), scale=2)
             lcd.write(frame, fit=False)
+            time.sleep({hold})
             lcd.backlight(40)
             dimmed = lcd.backlight()
+            time.sleep({hold})
             lcd.backlight(100)
+            time.sleep({hold})
             print('{MARKER_OK}', lcd.width(), lcd.height(), dimmed, lcd.backlight())
         finally:
             lcd.deinit()
         """),
-        timeout=30,
+        timeout=30 + 3 * hold,
     )
     width, height, dimmed, restored = (int(value) for value in answer.split())
     if dimmed != 40 or restored != 100:
@@ -632,11 +639,15 @@ def main() -> int:
     parser.add_argument("--checks", default="all", help="all, or a comma-separated list: " + ", ".join(CHECKS))
     parser.add_argument("--output", help="write the captured JPEG here")
     parser.add_argument("--frames", type=int, default=30, help="frames used by the timing checks")
+    parser.add_argument("--display-hold", type=int, default=0,
+                        help="seconds to hold each LCD backlight state for visual inspection (default: 0)")
     parser.add_argument("--framesize", default="QVGA", help="sensor framesize constant")
     parser.add_argument("--pixformat", default="RGB565", help="sensor pixformat constant")
     parser.add_argument("--quality", type=int, default=60, help="JPEG quality for debug.capture_frame")
     parser.add_argument("--frame-timeout", type=float, default=25.0, help="seconds to wait for a camera frame")
     args = parser.parse_args()
+    if args.display_hold < 0:
+        parser.error("--display-hold must be non-negative")
     try:
         return run(args)
     except (OSError, serial.SerialException) as exc:

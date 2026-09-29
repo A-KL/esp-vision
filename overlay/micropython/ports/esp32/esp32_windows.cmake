@@ -35,24 +35,17 @@ if(MICROPY_PREVIEW_VERSION_2)
     list(APPEND _esp_vision_qstr_def "MICROPY_PREVIEW_VERSION_2=(1)")
 endif()
 
-set(_esp_vision_qstr_cpp_flags)
-foreach(_arg ${_esp_vision_qstr_inc})
-    list(APPEND _esp_vision_qstr_cpp_flags "-I${_arg}")
+# Evaluate generator expressions, omit empty entries, and quote response-file arguments.
+foreach(_kind IN ITEMS inc def)
+    string(REPLACE "\\" "\\\\" _rsp_items "${_esp_vision_qstr_${_kind}}")
+    string(REPLACE "\"" "\\\"" _rsp_items "${_rsp_items}")
+    set(_esp_vision_qstr_${_kind} "$<FILTER:${_rsp_items},EXCLUDE,^$>")
 endforeach()
-foreach(_arg ${_esp_vision_qstr_def})
-    list(APPEND _esp_vision_qstr_cpp_flags "-D${_arg}")
-endforeach()
-
 set(_esp_vision_qstr_flags_rsp "${CMAKE_CURRENT_BINARY_DIR}/micropython-qstr-flags.rsp")
-file(WRITE "${_esp_vision_qstr_flags_rsp}" "")
-foreach(_arg ${_esp_vision_qstr_cpp_flags})
-    string(REPLACE "\"" "\\\"" _rsp_arg "${_arg}")
-    if(_rsp_arg MATCHES "[ \t]")
-        file(APPEND "${_esp_vision_qstr_flags_rsp}" "\"${_rsp_arg}\"\n")
-    else()
-        file(APPEND "${_esp_vision_qstr_flags_rsp}" "${_rsp_arg}\n")
-    endif()
-endforeach()
+file(GENERATE OUTPUT "${_esp_vision_qstr_flags_rsp}"
+    CONTENT "$<$<BOOL:${_esp_vision_qstr_inc}>:\"-I$<JOIN:${_esp_vision_qstr_inc},\"\n\"-I>\">\n$<$<BOOL:${_esp_vision_qstr_def}>:\"-D$<JOIN:${_esp_vision_qstr_def},\"\n\"-D>\">\n"
+    TARGET ${MICROPY_TARGET}
+)
 
 set(_esp_vision_qstr_sources ${MICROPY_SOURCE_QSTR})
 set(_esp_vision_qstr_sources_rsp "${CMAKE_CURRENT_BINARY_DIR}/micropython-qstr-sources.rsp")

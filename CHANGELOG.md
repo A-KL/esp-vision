@@ -11,6 +11,7 @@ All notable changes to ESP-VISION are recorded here. The format follows [Keep a 
 
 ### Fixed
 
+- Fixed Windows QSTR preprocessing with ESP-IDF 6.1 by evaluating CMake generator expressions in compiler response files, including Mbed TLS header paths, and omitting empty include and definition entries.
 - Fixed the hardware-in-the-loop device checks intermittently failing with `ValueError: not enough values to unpack` by parsing a device answer only once its whole line has arrived.
 - Fixed the Python CI jobs failing with `wget: command not found` by moving them from `python:3.11-slim` to `python:3.11`.
 - Reduced `ESP32_S31_KORVO` and `ESP32_S31_CHATBOT` to two camera capture buffers, freeing 1.76 MiB of PSRAM so a model still fits alongside the 1280x720 SC101IOT capture path and the LCD framebuffers.
