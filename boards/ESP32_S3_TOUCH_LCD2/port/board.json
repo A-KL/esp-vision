@@ -1,0 +1,16 @@
+{
+    "deploy": [
+        "../deploy.md"
+    ],
+    "docs": "",
+    "features": [
+        "WiFi",
+        "DVP",
+        "OV5640"
+    ],
+    "mcu": "esp32s3",
+    "product": "ESP32_S3_TOUCH_LCD2",
+    "thumbnail": "",
+    "url": "https://docs.waveshare.com/ESP32-S3-Touch-LCD-2",
+    "vendor": "Waveshare"
+}
