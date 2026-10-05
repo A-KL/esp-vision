@@ -22,7 +22,7 @@ static esp_err_t (*s_st7789_draw_bitmap)(esp_lcd_panel_t *panel,
                                          int y_end,
                                          const void *color_data);
 
-static esp_err_t esp_vision_s3_eye_draw_bitmap(esp_lcd_panel_t *panel,
+static esp_err_t esp_vision_s3_touch_lcd_draw_bitmap(esp_lcd_panel_t *panel,
                                                int x_start,
                                                int y_start,
                                                int x_end,
@@ -48,12 +48,12 @@ esp_err_t lcd_panel_factory_entry_t(esp_lcd_panel_io_handle_t io,
     }
 
     s_st7789_draw_bitmap = (*panel_handle)->draw_bitmap;
-    (*panel_handle)->draw_bitmap = esp_vision_s3_eye_draw_bitmap;
+    (*panel_handle)->draw_bitmap = esp_vision_s3_touch_lcd_draw_bitmap;
     return ESP_OK;
 }
 
-static int esp_vision_s3_eye_camera_init(void *config,
-                                         int config_size,
+static int esp_vision_s3_touch_lcd_camera_init(void *config,
+                                               int config_size,
                                          void **device_handle)
 {
     (void)config;
@@ -103,12 +103,12 @@ static int esp_vision_s3_eye_camera_init(void *config,
     return ESP_OK;
 }
 
-static int esp_vision_s3_eye_camera_deinit(void *device_handle)
+static int esp_vision_s3_touch_lcd_camera_deinit(void *device_handle)
 {
     (void)device_handle;
     return esp_camera_deinit();
 }
 
 CUSTOM_DEVICE_IMPLEMENT(camera,
-                        esp_vision_s3_eye_camera_init,
-                        esp_vision_s3_eye_camera_deinit);
+                        esp_vision_s3_touch_lcd_camera_init,
+                        esp_vision_s3_touch_lcd_camera_deinit);

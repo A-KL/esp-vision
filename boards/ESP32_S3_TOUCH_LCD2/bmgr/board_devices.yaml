@@ -12,11 +12,11 @@ devices:
     config:
       mirror_x: false
       mirror_y: false
-      swap_xy: false
+      swap_xy: true
       invert_color: true
       need_reset: true
-      x_max: 240
-      y_max: 320
+      x_max: 320
+      y_max: 240
       io_spi_config:
         cs_gpio_num: 45
         dc_gpio_num: 42
@@ -40,7 +40,7 @@ devices:
     version: default
     init_skip: true
     config:
-      default_percent: 100
+      default_percent: 0
     peripherals:
       - name: ledc_backlight
 

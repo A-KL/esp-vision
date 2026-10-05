@@ -7,8 +7,8 @@
 #ifndef ESP_VISION_BOARD_CONFIG_H
 #define ESP_VISION_BOARD_CONFIG_H
 
-#define ESP_VISION_BOARD_ARCH                  "ESP32S3"
-#define ESP_VISION_BOARD_TYPE                  "ESP32_S3_TOUCH_LCD2"
+#define ESP_VISION_BOARD_ARCH                       "ESP32S3"
+#define ESP_VISION_BOARD_TYPE                       "ESP32_S3_TOUCH_LCD2"
 #define ESP_VISION_PORT_ESP32                       (1)
 
 #define ESP_VISION_IMLIB_PROFILER_ENABLE            (0)
@@ -24,7 +24,7 @@
 #define ESP_VISION_JPEG_QUALITY_THRESHOLD           (320 * 240 * 2)
 
 /* Camera configuration. */
-#define ESP_VISION_CAMERA_SENSOR_ID                 (0x2640)
+#define ESP_VISION_CAMERA_SENSOR_ID                 (0x5640)
 #define ESP_VISION_CAMERA_RAW_INPUT_WIDTH           (320)
 #define ESP_VISION_CAMERA_RAW_INPUT_HEIGHT          (240)
 #define ESP_VISION_CAMERA_ACTIVE_INPUT_WIDTH        (320)
@@ -57,8 +57,8 @@
 #define ESP_VISION_CAMERA_DVP_D7_PIN                (2)
 
 /* LCD configuration. */
-#define ESP_VISION_LCD_WIDTH                        (240)
-#define ESP_VISION_LCD_HEIGHT                       (320)
+#define ESP_VISION_LCD_WIDTH                        (320)
+#define ESP_VISION_LCD_HEIGHT                       (240)
 #define ESP_VISION_LCD_SPI_HOST                     (SPI2_HOST)
 #define ESP_VISION_LCD_PIXEL_CLOCK_HZ               (80 * 1000 * 1000)
 #define ESP_VISION_LCD_CMD_BITS                     (8)

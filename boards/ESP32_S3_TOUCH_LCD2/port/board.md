@@ -1,4 +1,4 @@
-The following firmware is applicable to the ESP32-S3-EYE development board
+The following firmware is applicable to the ESP32-S3-Touch-LCD-2 development board
 based on ESP32-S3.
 
 This board must be equipped with 8 MiB external SPI Flash and 8 MiB PSRAM. The
