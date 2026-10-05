@@ -186,6 +186,7 @@ firmware:
           - ESP32_P4X_VISION
           - ESP32_S3_EYE
           - AtomS3R-M12
+          - ESP32_S3_TOUCH_LCD2
           - TEMPLATE
       - IDF_IMAGE: ["release-v6.1"]
         BOARD:

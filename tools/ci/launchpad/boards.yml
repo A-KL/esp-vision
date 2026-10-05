@@ -32,6 +32,8 @@ boards:
     target: esp32p4
   ESP32_S3_EYE:
     target: esp32s3
+  ESP32_S3_TOUCH_LCD2:
+    target: esp32s3
   AtomS3R-M12:
     target: esp32s3
   ESP32_S31_CHATBOT:

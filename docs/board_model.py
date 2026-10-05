@@ -51,6 +51,7 @@ BOARD_IMAGES = {
     'AtomS3R-M12': '../../_static/boards/AtomS3R-M12/AtomS3R-M12.png',
     'ESP32_S31_CHATBOT': '../../_static/ESP-VISION_logo.svg',
     'ESP32_S31_MOSAICO': '../../_static/ESP-VISION_logo.svg',
+    'ESP32_S3_TOUCH_LCD2': 'https://www.waveshare.com/img/devkit/ESP32-S3-Touch-LCD-2/ESP32-S3-Touch-LCD-2-details-1.jpg',
 }
 
 # Canonical (English) getting-started URL override; falls back to board.json's
@@ -68,6 +69,7 @@ BOARD_URLS = {
         'https://docs.espressif.com/projects/esp-vision/en/latest/esp32p4/index.html'
     ),
     'AtomS3R-M12': 'https://docs.m5stack.com/en/core/AtomS3R-M12',
+    'ESP32_S3_TOUCH_LCD2': 'https://docs.waveshare.com/ESP32-S3-Touch-LCD-2',
 }
 
 CHIP_NAMES = {
